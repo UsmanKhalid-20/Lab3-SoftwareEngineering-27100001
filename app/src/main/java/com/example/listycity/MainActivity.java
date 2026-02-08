@@ -1,26 +1,27 @@
 package com.example.listycity;
 
 import android.os.Bundle;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements AddCityFragment.OnFragmentInteractionListener {
     private ListView cityList;
     private TextView selectedCityText;
-    private Button addButton, deleteButton;
-    private ArrayAdapter<String> cityAdapter;
-    private ArrayList<String> dataList;
+    private Button addButton, deleteButton, editButton; // Added editButton
+
+    private ArrayAdapter<City> cityAdapter;
+    private ArrayList<City> dataList;
+
     private int selectedPosition = -1;
+    private boolean isEditing = false; // Flag to track state
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,21 +33,38 @@ public class MainActivity extends AppCompatActivity {
         addButton = findViewById(R.id.add_button);
         deleteButton = findViewById(R.id.delete_button);
 
-        // Data
-        String[] cities = {"Lahore", "Peshawar", "Karachi", "Islamabad", "Quetta", "Gawadar", "Rawalpindi", "Multan", "Hyderabad"};
-        dataList = new ArrayList<>(Arrays.asList(cities));
-        cityAdapter = new ArrayAdapter<>(this, R.layout.content, dataList);
+        // You should add this button to your main_activity.xml
+        // Or you can reuse existing layout buttons differently.
+        // For this code, I assume you added a button with id 'edit_button'
+        editButton = findViewById(R.id.edit_button);
+
+        // Initialize Data
+        dataList = new ArrayList<>();
+        dataList.add(new City("Peshawar", "KP"));
+        dataList.add(new City("Charsadda", "KP"));
+        dataList.add(new City("Karachi", "SI"));
+        dataList.add(new City("Hydrabad", "SI"));
+        dataList.add(new City("Bahawalpur", "PU"));
+        dataList.add(new City("Lahore", "PU"));
+        dataList.add(new City("Quetta", "BA"));
+        dataList.add(new City("Gawadar", "BA"));
+
+
+        // Use CustomList Adapter
+        cityAdapter = new CustomList(this, dataList);
         cityList.setAdapter(cityAdapter);
 
-
+        // Handle Clicks
         cityList.setOnItemClickListener((parent, view, position, id) -> {
             selectedPosition = position;
-            String selectedCity = dataList.get(position);
-            selectedCityText.setText("Selected: " + selectedCity);
+            City selectedCity = dataList.get(position);
+            selectedCityText.setText("Selected: " + selectedCity.getCityName());
 
-            // I wanted to distinguish what item i had selected from the list
+            deleteButton.setEnabled(true);
+            editButton.setEnabled(true); // Enable edit on selection
+
+            // Highlight Logic
             view.setBackgroundColor(getResources().getColor(android.R.color.holo_blue_light, getTheme()));
-
             for (int i = 0; i < parent.getChildCount(); i++) {
                 if (i != position) {
                     parent.getChildAt(i).setBackgroundColor(getResources().getColor(android.R.color.transparent, getTheme()));
@@ -54,72 +72,60 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Add Button Logic
+        addButton.setOnClickListener(v -> {
+            isEditing = false;
+            new AddCityFragment().show(getSupportFragmentManager(), "ADD_CITY");
+        });
 
-        addButton.setOnClickListener(v -> showAddCityDialog());
+        // Edit Button Logic
+        editButton.setOnClickListener(v -> {
+            if (selectedPosition >= 0) {
+                isEditing = true;
+                City cityToEdit = dataList.get(selectedPosition);
+                // Use newInstance to pass the city
+                AddCityFragment.newInstance(cityToEdit).show(getSupportFragmentManager(), "EDIT_CITY");
+            }
+        });
+
+        // Delete Button Logic
         deleteButton.setOnClickListener(v -> deleteSelectedCity());
+
         deleteButton.setEnabled(false);
+        editButton.setEnabled(false);
     }
 
-
-    private void showAddCityDialog() {
-
-        final EditText input = new EditText(this);
-        input.setHint("Enter city name");
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Add New City").setView(input).setPositiveButton("CONFIRM", (dialog, which) -> {
-                    String cityName = input.getText().toString().trim();
-
-                    if (!cityName.isEmpty()) {
-                        dataList.add(cityName);
-                        cityAdapter.notifyDataSetChanged();
-                        Toast.makeText(MainActivity.this, "Added: " + cityName, Toast.LENGTH_SHORT).show();
-
-                    } else {
-                        Toast.makeText(MainActivity.this, "City name cannot be empty", Toast.LENGTH_SHORT).show();
-
-                    }
-
-                }).setNegativeButton("CANCEL", (dialog, which) -> dialog.cancel()).show();
+    // Interface method from Fragment
+    @Override
+    public void onOkPressed(City city) {
+        if (isEditing) {
+            // Update existing city
+            dataList.set(selectedPosition, city);
+            selectedCityText.setText("Selected: " + city.getCityName());
+        } else {
+            // Add new city
+            dataList.add(city);
+        }
+        cityAdapter.notifyDataSetChanged();
     }
 
     private void deleteSelectedCity() {
-
         if (selectedPosition != -1 && selectedPosition < dataList.size()) {
-            String cityToDelete = dataList.get(selectedPosition);
-
+            City cityToDelete = dataList.get(selectedPosition);
             dataList.remove(selectedPosition);
             cityAdapter.notifyDataSetChanged();
 
+            // Reset UI
             selectedPosition = -1;
             selectedCityText.setText("No city selected");
             deleteButton.setEnabled(false);
+            editButton.setEnabled(false);
 
+            // Clear highlights
             for (int i = 0; i < cityList.getChildCount(); i++) {
                 cityList.getChildAt(i).setBackgroundColor(getResources().getColor(android.R.color.transparent, getTheme()));
             }
-
-            Toast.makeText(this, "Deleted: " + cityToDelete, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Deleted: " + cityToDelete.getCityName(), Toast.LENGTH_SHORT).show();
         }
-    }
-
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        cityList.setOnItemClickListener((parent, view, position, id) -> {
-            selectedPosition = position;
-            selectedCityText.setText("Selected: " + dataList.get(position));
-            deleteButton.setEnabled(true);
-
-            view.setBackgroundColor(getResources().getColor(android.R.color.holo_blue_light, getTheme()));
-            for (int i = 0; i < parent.getChildCount(); i++) {
-                if (i != position) {
-                    parent.getChildAt(i).setBackgroundColor(getResources().getColor(android.R.color.transparent, getTheme()));
-                }
-            }
-        });
-
-
     }
 }
