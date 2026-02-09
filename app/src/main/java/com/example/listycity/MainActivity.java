@@ -117,6 +117,8 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.O
             for (int i = 0; i < cityList.getChildCount(); i++) {
                 cityList.getChildAt(i).setBackgroundColor(getResources().getColor(android.R.color.transparent, getTheme()));
             }
+
+            // For my convinience
             Toast.makeText(this, "Deleted: " + cityToDelete.getCityName(), Toast.LENGTH_SHORT).show();
         }
     }
