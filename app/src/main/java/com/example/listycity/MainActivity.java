@@ -59,7 +59,7 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.O
             deleteButton.setEnabled(true);
             editButton.setEnabled(true);
 
-            // Highlighting once again
+            // Highlighting once again (Fittay mu)
             view.setBackgroundColor(getResources().getColor(android.R.color.holo_blue_light, getTheme()));
             for (int i = 0; i < parent.getChildCount(); i++) {
                 if (i != position) {

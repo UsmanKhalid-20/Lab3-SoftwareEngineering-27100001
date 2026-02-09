@@ -25,14 +25,17 @@ public class AddCityFragment extends DialogFragment {
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
+
         if (context instanceof OnFragmentInteractionListener) {
+
             listener = (OnFragmentInteractionListener) context;
+
         } else {
-            throw new RuntimeException(context.toString() + " must implement OnFragmentInteractionListener");
+
+            throw new RuntimeException(context.toString() + "Implement karo");
         }
     }
 
-    // Hint #3: newInstance to pass a city for editing
     public static AddCityFragment newInstance(City city) {
         Bundle args = new Bundle();
         args.putSerializable("city", city);
@@ -51,7 +54,7 @@ public class AddCityFragment extends DialogFragment {
 
         String title = "Add City";
 
-        // Check if we are editing (arguments exist)
+        // Assumption : If i am getting args then i am in highlighted section
         if (getArguments() != null) {
             cityToEdit = (City) getArguments().getSerializable("city");
             if (cityToEdit != null) {
@@ -62,17 +65,6 @@ public class AddCityFragment extends DialogFragment {
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        return builder
-                .setView(view)
-                .setTitle(title)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("OK", (dialog, which) -> {
-                    String city = cityName.getText().toString();
-                    String province = provinceName.getText().toString();
-
-                    // If editing, update the existing object
-                    // If adding, create a new one (MainActivity handles the list add)
-                    listener.onOkPressed(new City(city, province));
-                }).create();
+        return builder .setView(view).setTitle(title).setNegativeButton("Cancel", null).setPositiveButton("OK", (dialog, which) -> { String city = cityName.getText().toString(); String province = provinceName.getText().toString(); listener.onOkPressed(new City(city, province)); }).create();
     }
 }
