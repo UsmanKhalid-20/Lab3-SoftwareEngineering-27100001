@@ -1,6 +1,7 @@
 package com.example.listycity;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -8,20 +9,32 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-
 import java.util.ArrayList;
+import java.util.HashMap;
+
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 
 public class MainActivity extends AppCompatActivity implements AddCityFragment.OnFragmentInteractionListener {
     private ListView cityList;
     private TextView selectedCityText;
     private Button addButton, deleteButton, editButton;
-
     private ArrayAdapter<City> cityAdapter;
     private ArrayList<City> dataList;
-
     private int selectedPosition = -1;
     private boolean isEditing = false;
+
+
+    // New variables for lab5 (database)
+    private FirebaseFirestore db;
+    private CollectionReference citiesRef;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,20 +49,47 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.O
         // Change String !!!
         editButton = findViewById(R.id.edit_button);
 
-        // Initialize Data
+        // Initialize Data but making it mpty for cloud database
         dataList = new ArrayList<>();
-        dataList.add(new City("Peshawar", "KP"));
-        dataList.add(new City("Charsadda", "KP"));
-        dataList.add(new City("Karachi", "SI"));
-        dataList.add(new City("Hydrabad", "SI"));
-        dataList.add(new City("Bahawalpur", "PU"));
-        dataList.add(new City("Lahore", "PU"));
-        dataList.add(new City("Quetta", "BA"));
-        dataList.add(new City("Gawadar", "BA"));
+//        dataList.add(new City("Peshawar", "KP"));
+//        dataList.add(new City("Charsadda", "KP"));
+//        dataList.add(new City("Karachi", "SI"));
+//        dataList.add(new City("Hydrabad", "SI"));
+//        dataList.add(new City("Bahawalpur", "PU"));
+//        dataList.add(new City("Lahore", "PU"));
+//        dataList.add(new City("Quetta", "BA"));
+//        dataList.add(new City("Gawadar", "BA"));
 
 
         cityAdapter = new CustomList(this, dataList);
         cityList.setAdapter(cityAdapter);
+
+        db = FirebaseFirestore.getInstance();
+        citiesRef = db.collection("cities");
+
+        citiesRef.addSnapshotListener(new EventListener<QuerySnapshot>() {
+            @Override
+            public void onEvent(@Nullable QuerySnapshot querySnapshots, @Nullable FirebaseFirestoreException error) {
+                if (error != null) {
+                    Log.e("Firestore", error.toString());
+                    return;
+                }
+                if (querySnapshots != null) {
+                    dataList.clear(); // Clearing the old list
+
+                    for (QueryDocumentSnapshot doc: querySnapshots) {
+                        String city = doc.getId();
+                        String province = doc.getString("province");
+                        dataList.add(new City(city, province));
+                    }
+
+
+
+                    // Now updating UI
+                    cityAdapter.notifyDataSetChanged();
+                }
+            }
+        });
 
         cityList.setOnItemClickListener((parent, view, position, id) -> {
             selectedPosition = position;
@@ -91,24 +131,32 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.O
 
     @Override
     public void onOkPressed(City city) {
-        if (isEditing) {
+        HashMap<String, String> data = new HashMap<>();
+        data.put("province", city.getProvinceName());
 
-            dataList.set(selectedPosition, city);
-            selectedCityText.setText("Selected: " + city.getCityName());
+        citiesRef.document(city.getCityName()).set(data).addOnSuccessListener(aVoid -> { Log.d("Firestore", "Data added successfully"); }).addOnFailureListener(e -> { Log.d("Firestore", "Data could not be added!" + e.toString()); });
+        selectedCityText.setText("Selected: " + city.getCityName());
 
-        } else {
-
-            dataList.add(city);
-        }
-        cityAdapter.notifyDataSetChanged();
+//        if (isEditing) {
+//
+//            dataList.set(selectedPosition, city);
+//            selectedCityText.setText("Selected: " + city.getCityName());
+//
+//        } else {
+//
+//            dataList.add(city);
+//        }
+//        cityAdapter.notifyDataSetChanged();
     }
 
     private void deleteSelectedCity() {
+
         if (selectedPosition != -1 && selectedPosition < dataList.size()) {
             City cityToDelete = dataList.get(selectedPosition);
-            dataList.remove(selectedPosition);
-            cityAdapter.notifyDataSetChanged();
 
+            citiesRef.document(cityToDelete.getCityName()).delete().addOnSuccessListener(aVoid -> { Log.d("Firestore", "City deleted successfully"); Toast.makeText(this, "Deleted: " + cityToDelete.getCityName(), Toast.LENGTH_SHORT).show(); }) .addOnFailureListener(e -> { Log.e("Firestore", "Error deleting city", e); });
+
+            // My normal cleanup
             selectedPosition = -1;
             selectedCityText.setText("No city selected");
             deleteButton.setEnabled(false);
@@ -117,9 +165,6 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.O
             for (int i = 0; i < cityList.getChildCount(); i++) {
                 cityList.getChildAt(i).setBackgroundColor(getResources().getColor(android.R.color.transparent, getTheme()));
             }
-
-            // For my convinience
-            Toast.makeText(this, "Deleted: " + cityToDelete.getCityName(), Toast.LENGTH_SHORT).show();
         }
     }
 }
